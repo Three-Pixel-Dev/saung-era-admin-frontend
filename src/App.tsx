@@ -4,6 +4,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Categories } from "./pages/Categories";
 import { NotFound } from "./pages/NotFound";
 import "./App.css";
+import { Customers } from "./pages/Customers";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/categories" element={<Categories />} />
+          <Route path="/customers" element={<Customers />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Layout>
