@@ -174,7 +174,6 @@ export function Dashboard() {
 
   return (
     <div className="p-8">
-      {/* Command Palette */}
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Type a command or search..." />
         <CommandList>
@@ -210,7 +209,6 @@ export function Dashboard() {
         </CommandList>
       </CommandDialog>
 
-      {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard Overview</h1>
         <div className="flex items-center gap-4">
@@ -235,7 +233,6 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map((card) => (
           <Card key={card.title}>
@@ -263,9 +260,7 @@ export function Dashboard() {
         ))}
       </div>
 
-      {/* Charts and Top Products */}
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Sales Revenue Chart */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -304,7 +299,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Top Products */}
         <Card>
           <CardHeader>
             <CardTitle>Top Products</CardTitle>
@@ -333,7 +327,6 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Recent Orders */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
