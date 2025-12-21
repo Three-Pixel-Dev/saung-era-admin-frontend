@@ -15,6 +15,10 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Calendar,   
+  Award,     
+  Ticket,   
+  ShieldCheck 
 } from "lucide-react";
 import { User, UserStatus } from "@/types/user";
 import { Card } from "@/components/ui/card";
@@ -76,10 +80,9 @@ export default function Customers() {
     page: currentPage,
     size: itemsPerPage,
     keyword: debouncedSearch,
-    // THE FIX: If "ALL", send undefined. Otherwise, send the status string.
     status: filterStatus === "ALL" ? undefined : filterStatus,
   });
-
+  console.log("filter status is ",filterStatus);
   // Derived data from API response
   // Accessing .content and .totalElements (assuming Spring Boot Pageable response structure)
   const users = customerData?.content || [];
@@ -100,7 +103,7 @@ export default function Customers() {
     type: null,
     user: null,
   });
-
+  console.log("current page is ", currentPage);
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(0);
@@ -402,17 +405,18 @@ export default function Customers() {
                 </Button>
                 <div className="flex items-center gap-1">
                   {(() => {
-                    const startPage = Math.floor((currentPage - 1) / 5) * 5 + 1;
+                    const startPage = Math.floor(currentPage / 5) * 5 + 1;
                     const endPage = Math.min(startPage + 4, totalPages);
                     const pages = [];
-                    for (let i = startPage; i <= endPage; i++) pages.push(i);
+
+                    for (let i = startPage; i <= endPage; i++) {pages.push(i)}
 
                     return pages.map((pNum) => (
                       <button
                         key={pNum}
-                        onClick={() => setCurrentPage(pNum)}
+                        onClick={() => setCurrentPage(pNum-1)}
                         className={`h-8 w-8 text-xs rounded-md transition-colors ${
-                          currentPage === pNum
+                          currentPage === pNum-1
                             ? "bg-black text-white"
                             : "hover:bg-gray-100 text-gray-600"
                         }`}
@@ -426,9 +430,9 @@ export default function Customers() {
                   variant="outline"
                   size="sm"
                   onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages, p + 5))
+                    setCurrentPage((p) => Math.min(totalPages-1, p + 5))
                   }
-                  disabled={currentPage >= totalPages}
+                  disabled={currentPage >= totalPages-1}
                   className="h-8 px-2"
                 >
                   <span className="mr-1">Next</span>
@@ -478,52 +482,109 @@ export default function Customers() {
 
             {/* Panel Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Info Grid */}
+              
+              {/* SECTION 1: Personal & Contact Info */}
               <div className="space-y-4">
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Contact Information
+                  Personal Details
                 </h3>
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                <div className="grid grid-cols-1 gap-3">
+                  {/* Phone */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
                     <Phone className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm font-medium">
-                      {selectedUserDetails.phoneNumber}
+                    <span className="text-sm font-medium text-gray-700">
+                      {selectedUserDetails.phoneNumber || "N/A"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+
+                  {/* Address */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
                     <MapPin className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-medium text-gray-700">
                       {selectedUserDetails.address || "N/A"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+
+                  {/* Username */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
                     <UserIcon className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-medium text-gray-700">
                       @{selectedUserDetails.username}
                     </span>
+                  </div>
+
+                  {/* Date of Birth (New) */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
+                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-400 leading-none">Date of Birth</span>
+                      <span className="text-sm font-medium text-gray-700">
+                        {selectedUserDetails.dateOfBirth || "N/A"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* KYC Status (New) */}
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
+                    <ShieldCheck className={`h-4 w-4 ${
+                      selectedUserDetails.kyc === "VERIFIED" ? "text-green-500" : "text-gray-400"
+                    }`} />
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-400 leading-none">KYC Status</span>
+                      <span className={`text-sm font-bold ${
+                        selectedUserDetails.kyc === "VERIFIED" ? "text-green-600" : "text-gray-600"
+                      }`}>
+                        {selectedUserDetails.kyc || "PENDING"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* SECTION 2: Account Stats (Grid Layout) */}
               <div className="space-y-4">
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Account Stats
+                  Account Activity
                 </h3>
+                {/* 2x2 Grid for Stats */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-4 border border-gray-100 rounded-xl text-center">
+                  
+                  {/* Total Orders */}
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm flex flex-col items-center justify-center text-center">
                     <div className="text-2xl font-bold text-gray-900">
-                      {selectedUserDetails.totalOrders}
+                      {selectedUserDetails.totalOrders ?? 0}
                     </div>
-                    <div className="text-xs text-gray-500">Total Orders</div>
+                    <div className="text-xs text-gray-500 mt-1">Total Orders</div>
                   </div>
-                  <div className="p-4 border border-gray-100 rounded-xl text-center">
+
+                  {/* Loyalty Points (New) */}
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm flex flex-col items-center justify-center text-center">
+                    <div className="text-2xl font-bold text-amber-500 flex items-center gap-1">
+                      <Award className="h-5 w-5" />
+                      {selectedUserDetails.points ?? 0}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">Loyalty Points</div>
+                  </div>
+
+                  {/* Joined Date */}
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm flex flex-col items-center justify-center text-center overflow-hidden">
                     <div className="text-sm font-bold text-gray-900">
                       {selectedUserDetails.createdAt
                         ? selectedUserDetails.createdAt.slice(0, 10)
                         : "N/A"}
                     </div>
-                    <div className="text-xs text-gray-500">Joined Date</div>
+                    <div className="text-xs text-gray-500 mt-1">Joined Date</div>
                   </div>
+
+                  {/* Referral Code (New) */}
+                  <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm flex flex-col items-center justify-center text-center overflow-hidden">
+                    <div className="text-sm font-bold text-blue-600 flex items-center gap-1">
+                      <Ticket className="h-4 w-4" />
+                      {selectedUserDetails.referralCode || "-"}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">Referral Code</div>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -536,7 +597,7 @@ export default function Customers() {
                     <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
                     <p>
                       Blocking this user will immediately revoke their access to
-                      the platform and API keys.
+                      the platform.
                     </p>
                   </div>
                   <Button

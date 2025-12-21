@@ -19,6 +19,7 @@ export function useCustomers(params: {
   keyword?: string;
   status?: string;
 }) {
+  console.log("hook status is ",params.status)
   return useQuery({
     queryKey: customerKeys.list(params),
     queryFn: () => customerApi.getAll(params),
@@ -40,8 +41,9 @@ export function useBlockCustomer() {
 
   return useMutation({
     mutationFn: (id: number) => customerApi.block(id),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: customerKeys.detail(variables) });
     },
   });
 }
@@ -52,8 +54,9 @@ export function useUnblockCustomer() {
 
   return useMutation({
     mutationFn: (id: number) => customerApi.unblock(id),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: customerKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: customerKeys.detail(variables) });
     },
   });
 }

@@ -9,10 +9,13 @@ export const customerApi = {
     keyword?: string;
     status?: string;
   }): Promise<UserResponse> => {
-    const searchParams = new URLSearchParams({
-      page: params.page.toString(),
-      size: params.size.toString(),
-    });
+    const searchParams = new URLSearchParams();
+    searchParams.append("page", params.page.toString());
+    searchParams.append("size", params.size.toString());
+
+    if (params.status) {
+      searchParams.append("status", params.status);
+    }
 
     if (params.keyword) {
       searchParams.append("keyword", params.keyword);
