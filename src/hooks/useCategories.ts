@@ -1,14 +1,14 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { categoryApi } from '@/api/categoryApi';
-import { CategoryRequest, CategoryResponse } from '@/types/category';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { categoryApi } from "@/api/categoryApi";
+import { CategoryRequest, CategoryResponse } from "@/types/category";
 
 // Query keys
 export const categoryKeys = {
-  all: ['categories'] as const,
-  lists: () => [...categoryKeys.all, 'list'] as const,
+  all: ["categories"] as const,
+  lists: () => [...categoryKeys.all, "list"] as const,
   list: (filters: Record<string, unknown>) =>
     [...categoryKeys.lists(), filters] as const,
-  details: () => [...categoryKeys.all, 'detail'] as const,
+  details: () => [...categoryKeys.all, "detail"] as const,
   detail: (id: number) => [...categoryKeys.details(), id] as const,
 };
 
@@ -84,4 +84,3 @@ export function useRestoreCategory() {
     },
   });
 }
-

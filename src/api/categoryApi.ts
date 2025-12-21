@@ -1,10 +1,10 @@
-import { apiClient } from '@/lib/api';
-import { CategoryRequest, CategoryResponse } from '@/types/category';
+import { apiClient } from "@/lib/api";
+import { CategoryRequest, CategoryResponse } from "@/types/category";
 
 export const categoryApi = {
   // Get all categories
   getAll: async (): Promise<CategoryResponse[]> => {
-    return apiClient.get<CategoryResponse[]>('/api/admin/categories');
+    return apiClient.get<CategoryResponse[]>("/api/admin/categories");
   },
 
   // Get category by ID
@@ -14,7 +14,7 @@ export const categoryApi = {
 
   // Create category
   create: async (data: CategoryRequest): Promise<CategoryResponse> => {
-    return apiClient.post<CategoryResponse>('/api/admin/categories', data);
+    return apiClient.post<CategoryResponse>("/api/admin/categories", data);
   },
 
   // Update category
@@ -42,4 +42,3 @@ export const categoryApi = {
     return apiClient.delete<void>(`/api/admin/categories/${id}/hard`);
   },
 };
-
