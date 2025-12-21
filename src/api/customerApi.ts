@@ -7,6 +7,7 @@ export const customerApi = {
     page: number;
     size: number;
     keyword?: string;
+    status?: string;
   }): Promise<UserResponse> => {
     const searchParams = new URLSearchParams({
       page: params.page.toString(),

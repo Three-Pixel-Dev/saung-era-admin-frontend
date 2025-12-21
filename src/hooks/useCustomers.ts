@@ -17,6 +17,7 @@ export function useCustomers(params: {
   page: number;
   size: number;
   keyword?: string;
+  status?: string;
 }) {
   return useQuery({
     queryKey: customerKeys.list(params),

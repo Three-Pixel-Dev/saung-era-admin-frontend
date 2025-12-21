@@ -4,7 +4,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Categories } from "./pages/Categories";
 import { NotFound } from "./pages/NotFound";
 import "./App.css";
-import { Customers } from "./pages/Customers";
+import Customers from "./pages/Customers";
 
 function App() {
   return (
