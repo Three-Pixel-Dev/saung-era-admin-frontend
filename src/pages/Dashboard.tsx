@@ -1,7 +1,28 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bell, HelpCircle, TrendingUp, TrendingDown, Eye, LayoutDashboard, ShoppingBag, Package, Grid3x3, Users, BarChart3, Megaphone, Settings } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Search,
+  Bell,
+  HelpCircle,
+  TrendingUp,
+  TrendingDown,
+  Eye,
+  LayoutDashboard,
+  ShoppingBag,
+  Package,
+  Grid3x3,
+  Users,
+  BarChart3,
+  Megaphone,
+  Settings,
+} from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -174,7 +195,6 @@ export function Dashboard() {
 
   return (
     <div className="p-8">
-      {/* Command Palette */}
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Type a command or search..." />
         <CommandList>
@@ -210,7 +230,6 @@ export function Dashboard() {
         </CommandList>
       </CommandDialog>
 
-      {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Dashboard Overview</h1>
         <div className="flex items-center gap-4">
@@ -235,13 +254,16 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map((card) => (
           <Card key={card.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-              <div className={`h-10 w-10 rounded-full ${card.iconBg} flex items-center justify-center text-lg`}>
+              <CardTitle className="text-sm font-medium">
+                {card.title}
+              </CardTitle>
+              <div
+                className={`h-10 w-10 rounded-full ${card.iconBg} flex items-center justify-center text-lg`}
+              >
                 {card.icon}
               </div>
             </CardHeader>
@@ -253,7 +275,11 @@ export function Dashboard() {
                 ) : (
                   <TrendingDown className="h-3 w-3 text-red-600" />
                 )}
-                <span className={card.trend === "up" ? "text-green-600" : "text-red-600"}>
+                <span
+                  className={
+                    card.trend === "up" ? "text-green-600" : "text-red-600"
+                  }
+                >
                   {card.change}
                 </span>
                 <span className="text-gray-500">{card.period}</span>
@@ -263,9 +289,7 @@ export function Dashboard() {
         ))}
       </div>
 
-      {/* Charts and Top Products */}
       <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Sales Revenue Chart */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -274,8 +298,12 @@ export function Dashboard() {
                 <CardDescription>Last 30 Days</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button variant="default" size="sm">Daily</Button>
-                <Button variant="outline" size="sm">Weekly</Button>
+                <Button variant="default" size="sm">
+                  Daily
+                </Button>
+                <Button variant="outline" size="sm">
+                  Weekly
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -304,7 +332,6 @@ export function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Top Products */}
         <Card>
           <CardHeader>
             <CardTitle>Top Products</CardTitle>
@@ -333,13 +360,14 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Recent Orders */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Recent Orders</CardTitle>
-              <CardDescription>Monitor your latest transactions</CardDescription>
+              <CardDescription>
+                Monitor your latest transactions
+              </CardDescription>
             </div>
             <div className="flex gap-2">
               <Button variant="outline">
@@ -369,12 +397,17 @@ export function Dashboard() {
                     <div className="flex items-center gap-2">
                       <Avatar>
                         <AvatarFallback className="bg-gray-200">
-                          {order.customer.name.split(" ").map(n => n[0]).join("")}
+                          {order.customer.name
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="font-medium">{order.customer.name}</p>
-                        <p className="text-sm text-gray-500">{order.customer.email}</p>
+                        <p className="text-sm text-gray-500">
+                          {order.customer.email}
+                        </p>
                       </div>
                     </div>
                   </TableCell>
@@ -408,4 +441,3 @@ export function Dashboard() {
     </div>
   );
 }
-
