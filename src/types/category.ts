@@ -9,6 +9,7 @@ export interface CategoryResponse {
   name: string;
   description?: string;
   parentId?: number | null;
+  parentCategory?: CategoryResponse | null;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
