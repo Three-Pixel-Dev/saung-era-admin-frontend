@@ -85,7 +85,7 @@ export function Categories() {
 
   const parentCategories = useMemo(() => {
     return allCategories
-      .filter((cat) => !cat.deletedAt && !cat.parentId)
+      .filter((cat) => !cat.deletedAt && !cat.parentCategory && !cat.parentId)
       .map((cat) => ({ id: cat.id.toString(), name: cat.name }));
   }, [allCategories]);
 
@@ -128,11 +128,11 @@ export function Categories() {
     return pages;
   };
 
-  const getParentName = (parentId: number | null | undefined): string => {
-    if (!parentId) return "-";
-    const parent = categories.find((cat) => cat.id === parentId) || 
-                    allCategories.find((cat) => cat.id === parentId);
-    return parent?.name || "-";
+  const getParentName = (category: CategoryResponse): string => {
+    if (category.parentCategory) {
+      return category.parentCategory.name;
+    }
+    return "-";
   };
 
   const handleSearchChange = (value: string) => {
@@ -335,7 +335,7 @@ export function Categories() {
               ) : (
                 categories.map((category) => {
                   const status = getStatusBadge(category);
-                  const parentName = getParentName(category.parentId);
+                  const parentName = getParentName(category);
                   return (
                     <TableRow key={category.id}>
                       <TableCell>
