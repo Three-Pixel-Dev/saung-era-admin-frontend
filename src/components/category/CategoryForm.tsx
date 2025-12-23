@@ -57,10 +57,13 @@ export function CategoryForm({
 
   useEffect(() => {
     if (editingCategory && open) {
+      const parentId = editingCategory.parentCategory?.id?.toString() || 
+                       editingCategory.parentId?.toString() || 
+                       "none";
       setFormData({
         name: editingCategory.name || "",
         description: editingCategory.description || "",
-        parentId: editingCategory.parentId?.toString() || "none",
+        parentId: parentId,
       });
     } else if (!editingCategory && open) {
       setFormData({

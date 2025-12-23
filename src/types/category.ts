@@ -9,6 +9,7 @@ export interface CategoryResponse {
   name: string;
   description?: string;
   parentId?: number | null;
+  parentCategory?: CategoryResponse | null;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
@@ -23,5 +24,20 @@ export interface UserResponse {
   username: string;
   email: string;
   phoneNumber?: string;
+}
+
+export interface PagedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  pageNumber: number;
+  pageSize: number;
+}
+
+export interface CategoryListParams {
+  keyword?: string;
+  page?: number;
+  size?: number;
+  status?: string;
 }
 
