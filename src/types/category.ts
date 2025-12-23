@@ -25,3 +25,18 @@ export interface UserResponse {
   phoneNumber?: string;
 }
 
+export interface PagedResponse<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  pageNumber: number;
+  pageSize: number;
+}
+
+export interface CategoryListParams {
+  keyword?: string;
+  page?: number;
+  size?: number;
+  status?: string;
+}
+

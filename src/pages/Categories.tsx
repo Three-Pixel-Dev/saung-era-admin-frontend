@@ -58,41 +58,39 @@ export function Categories() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<CategoryResponse | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = 5;
 
-  const { data: categories = [], isLoading, error, refetch } = useCategories();
+  const { data: pagedData, isLoading, error, refetch } = useCategories({
+    keyword: searchQuery || undefined,
+    page: currentPage,
+    size: itemsPerPage,
+    status: statusFilter,
+  });
+
+  const { data: allCategoriesData } = useCategories(
+    { size: 100 },
+    { enabled: isFormOpen }
+  );
+
+  const categories = pagedData?.content || [];
+  const totalPages = pagedData?.totalPages || 0;
+  const totalElements = pagedData?.totalElements || 0;
+  const allCategories = allCategoriesData?.content || [];
+
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
 
   const parentCategories = useMemo(() => {
-    return categories
+    return allCategories
       .filter((cat) => !cat.deletedAt && !cat.parentId)
       .map((cat) => ({ id: cat.id.toString(), name: cat.name }));
-  }, [categories]);
-
-  const filteredCategories = useMemo(() => {
-    let filtered = categories.filter((cat) => {
-      const matchesSearch = !searchQuery || 
-        cat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        cat.description?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "all" || 
-        (statusFilter === "active" && !cat.deletedAt) ||
-        (statusFilter === "archived" && cat.deletedAt);
-      return matchesSearch && matchesStatus;
-    });
-    return filtered;
-  }, [categories, searchQuery, statusFilter]);
-
-  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedCategories = filteredCategories.slice(startIndex, endIndex);
+  }, [allCategories]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    setCurrentPage(0);
   }, [searchQuery, statusFilter]);
 
   const getPageNumbers = () => {
@@ -100,21 +98,21 @@ export function Categories() {
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
-      for (let i = 1; i <= totalPages; i++) {
+      for (let i = 0; i < totalPages; i++) {
         pages.push(i);
       }
     } else {
-      pages.push(1);
+      pages.push(0);
 
-      if (currentPage <= 3) {
-        for (let i = 2; i <= 4; i++) {
+      if (currentPage <= 2) {
+        for (let i = 1; i <= 3; i++) {
           pages.push(i);
         }
         pages.push("...");
-        pages.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
+        pages.push(totalPages - 1);
+      } else if (currentPage >= totalPages - 3) {
         pages.push("...");
-        for (let i = totalPages - 3; i <= totalPages; i++) {
+        for (let i = totalPages - 4; i < totalPages; i++) {
           pages.push(i);
         }
       } else {
@@ -123,7 +121,7 @@ export function Categories() {
           pages.push(i);
         }
         pages.push("...");
-        pages.push(totalPages);
+        pages.push(totalPages - 1);
       }
     }
 
@@ -132,8 +130,13 @@ export function Categories() {
 
   const getParentName = (parentId: number | null | undefined): string => {
     if (!parentId) return "-";
-    const parent = categories.find((cat) => cat.id === parentId);
+    const parent = categories.find((cat) => cat.id === parentId) || 
+                    allCategories.find((cat) => cat.id === parentId);
     return parent?.name || "-";
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
   };
 
   const handleFormSubmit = async (data: CategoryFormData) => {
@@ -259,7 +262,7 @@ export function Categories() {
                 placeholder="Search categories..."
                 className="pl-10"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
               />
             </div>
             <div className="flex items-center gap-2 flex-1 justify-end">
@@ -269,9 +272,9 @@ export function Categories() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-[140px]"
               >
-                <option value="all">Status: All</option>
-                <option value="active">Active</option>
-                <option value="archived">Archived</option>
+                <option value="ALL">Status: All</option>
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
               </Select>
               <Select defaultValue="main" className="w-[140px]">
                 <option value="main">Type: Main</option>
@@ -323,14 +326,14 @@ export function Categories() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ) : filteredCategories.length === 0 ? (
+              ) : categories.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     <p className="text-sm text-gray-500">No categories found</p>
                   </TableCell>
                 </TableRow>
               ) : (
-                paginatedCategories.map((category) => {
+                categories.map((category) => {
                   const status = getStatusBadge(category);
                   const parentName = getParentName(category.parentId);
                   return (
@@ -401,17 +404,17 @@ export function Categories() {
             </TableBody>
           </Table>
 
-          {filteredCategories.length > 0 && (
+          {totalElements > 0 && (
             <div className="mt-6 flex items-center justify-between">
               <p className="text-sm text-gray-600">
-                Showing {startIndex + 1} to {Math.min(endIndex, filteredCategories.length)} of {filteredCategories.length} results
+                Showing {currentPage * itemsPerPage + 1} to {Math.min((currentPage + 1) * itemsPerPage, totalElements)} of {totalElements} results
               </p>
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
+                  disabled={currentPage === 0}
                 >
                   Previous
                 </Button>
@@ -430,15 +433,15 @@ export function Categories() {
                       size="sm"
                       onClick={() => setCurrentPage(page as number)}
                     >
-                      {page}
+                      {(page as number) + 1}
                     </Button>
                   );
                 })}
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
+                  disabled={currentPage >= totalPages - 1}
                 >
                   Next
                 </Button>
