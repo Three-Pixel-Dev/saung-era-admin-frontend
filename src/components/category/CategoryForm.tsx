@@ -17,7 +17,7 @@ import { Select } from "@/components/ui/select";
 interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit?: (data: CategoryFormData) => void;
+  onSubmit?: (data: CategoryFormData) => Promise<void> | void;
   parentCategories?: Array<{ id: string; name: string }>;
   editingCategory?: CategoryResponse | null;
 }
@@ -115,7 +115,7 @@ export function CategoryForm({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validate()) {
@@ -128,8 +128,15 @@ export function CategoryForm({
       parentId: formData.parentId === "none" ? "" : formData.parentId,
     };
 
-    onSubmit?.(submitData);
-    handleClose();
+    try {
+      const result = onSubmit?.(submitData);
+      if (result instanceof Promise) {
+        await result;
+      }
+      handleClose();
+    } catch (error) {
+      console.error("Form submission error:", error);
+    }
   };
 
   const handleClose = () => {
