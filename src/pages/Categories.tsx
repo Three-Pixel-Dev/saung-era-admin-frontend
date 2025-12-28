@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -267,19 +267,31 @@ export function Categories() {
             </div>
             <div className="flex items-center gap-2 flex-1 justify-end">
               <span className="text-sm font-medium text-gray-700 whitespace-nowrap">FILTER BY:</span>
+              
               <Select 
                 value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-[140px]"
+                onValueChange={setStatusFilter}
               >
-                <option value="ALL">Status: All</option>
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Status: All</SelectItem>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="INACTIVE">Inactive</SelectItem>
+                </SelectContent>
               </Select>
-              <Select defaultValue="main" className="w-[140px]">
-                <option value="main">Type: Main</option>
-                <option value="sub">Sub-category</option>
+
+              <Select defaultValue="main">
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="main">Type: Main</SelectItem>
+                  <SelectItem value="sub">Sub-category</SelectItem>
+                </SelectContent>
               </Select>
+
               <Button variant="outline" size="icon" onClick={() => refetch()}>
                 <RefreshCw className="h-4 w-4" />
               </Button>
@@ -453,4 +465,3 @@ export function Categories() {
     </div>
   );
 }
-

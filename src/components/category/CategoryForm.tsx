@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CategoryFormProps {
   open: boolean;
@@ -192,18 +192,22 @@ export function CategoryForm({
             <div className="grid gap-2">
               <Label htmlFor="parent">Parent Category</Label>
               <Select
-                id="parent"
                 value={formData.parentId}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, parentId: e.target.value }))
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, parentId: value }))
                 }
               >
-                <option value="none">None (Top Level)</option>
-                {parentCategories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
+                <SelectTrigger id="parent">
+                  <SelectValue placeholder="Select a parent category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None (Top Level)</SelectItem>
+                  {parentCategories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
 
@@ -222,4 +226,3 @@ export function CategoryForm({
     </Dialog>
   );
 }
-

@@ -1,15 +1,33 @@
-import { useState, useRef, useEffect } from "react";
-import { ChevronLeft } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronLeft, Plus, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+// MultiSelect ကို ဖြုတ်လိုက်ပါပြီ
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateProduct, useUpdateProduct, useProduct } from "@/hooks/userProducts";
 import { useCategories } from "@/hooks/useCategories";
-import { ProductRequest } from "@/types/product";
-import { log } from "console";
+import { ProductRequest, ProductCodeValueRequest } from "@/types/product";
+import { codeApi } from "@/api/codeApi";
+
+// ConfigRow Type ကို ပြင်ဆင်ထားပါတယ် (Array မဟုတ်တော့ပါ)
+type ConfigRow = {
+  id: string;
+  color: string; // Single value
+  size: string;  // Single value
+  price: string;
+  quantity: string;
+};
+
+// Option Type အတွက်
+type OptionType = {
+  value: string;
+  label: string; // Text label for filtering/display
+  name: string;
+  description?: string; // For Color Hex Code
+};
 
 export function CreateProduct() {
   const navigate = useNavigate();
@@ -18,60 +36,105 @@ export function CreateProduct() {
 
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
-  const { data: categoriesData, isLoading: isCategoriesLoading } = useCategories({ size: 10000 });
-
+  const { data: categoriesData, isLoading: isCategoriesLoading } = useCategories({ size: 1000 });
   const { data: productData, isLoading: isProductLoading } = useProduct(id ? parseInt(id) : null);
+  
+  // --- STATE ---
   const [name, setName] = useState("");
-  const [sku, setSku] = useState("");
-  const [price, setPrice] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [weight, setWeight] = useState("");
   const [shortDesc, setShortDesc] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("Active"); 
-  const [isTaxable, setIsTaxable] = useState(false);
-  const [allowBackorder, setAllowBackorder] = useState(false);
+  const [longDescription, setLongDescription] = useState("");
+  const [weight, setWeight] = useState("");
+  const [tags, setTags] = useState("");
+  const [isTaxable, setIsTaxable] = useState(true);
+  const [discountType, setDiscountType] = useState("PERCENTAGE");
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [countryId, setCountryId] = useState("1");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  
+  // Dynamic Options State
+  const [colorsList, setColorsList] = useState<OptionType[]>([]);
+  const [sizesList, setSizesList] = useState<OptionType[]>([]);
+
+  // Configurations State (Initial Value ပြောင်းထားပါတယ်)
+  const [configurations, setConfigurations] = useState<ConfigRow[]>([
+    { id: '1', color: '', size: '', price: '', quantity: '100' }
+  ]);
 
   const [errors, setErrors] = useState<{
     name?: string;
-    sku?: string;
-    price?: string;
     category?: string;
+    config?: string;
   }>({});
-
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const categoriesList = Array.isArray(categoriesData) 
     ? categoriesData 
     : (categoriesData as any)?.content || [];
 
+  // --- FETCH OPTIONS FROM API ---
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const response = await codeApi.getAll();
+        const codes = Array.isArray(response) ? response : (response as any).data || [];
+        
+        const colorCode = codes.find((c: any) => c.name.toLowerCase() === 'color');
+        const sizeCode = codes.find((c: any) => c.name.toLowerCase() === 'size');
+
+        if (colorCode) {
+          const colorRes = await codeApi.getValuesByCodeId(colorCode.id);
+          const colorValues = Array.isArray(colorRes) ? colorRes : (colorRes as any).data || [];
+          setColorsList(colorValues.map((c: any) => ({
+            value: c.id.toString(),
+            label: c.name,
+            name: c.name,
+            description: c.description // Hex code keep ထားပါတယ်
+          })));
+        }
+
+        if (sizeCode) {
+          const sizeRes = await codeApi.getValuesByCodeId(sizeCode.id);
+          const sizeValues = Array.isArray(sizeRes) ? sizeRes : (sizeRes as any).data || [];
+          setSizesList(sizeValues.map((c: any) => ({
+            value: c.id.toString(),
+            label: `${c.name} - ${c.description || ''}`, 
+            name: c.name,
+            description: c.description
+          })));
+        }
+      } catch (error) {
+        console.error("Failed to fetch configuration options:", error);
+      }
+    };
+    fetchOptions();
+  }, []);
+
+  // --- LOAD EXISTING DATA FOR EDIT ---
   useEffect(() => {
     if (productData) {
       setName(productData.name || "");
-      setSku(productData.sku || "");
-      setPrice(productData.price?.toString() || "");
-      setQuantity(productData.quantity?.toString() || "0");
-      setWeight(productData.weight?.toString() || "");
       setShortDesc(productData.shortDescription || "");
-      setDescription(productData.description || "");
-      setStatus(productData.status || "Active");
-      setIsTaxable(productData.isTaxable || false);
-      setAllowBackorder(productData.allowBackorder || false);
+      setLongDescription(productData.longDescription || "");
+      setWeight(productData.weight?.toString() || "");
+      setTags(productData.tags || "");
+      setIsTaxable(productData.isTaxable ?? true);
+      setDiscountType(productData.discountType || "PERCENTAGE");
+      setDiscountAmount(productData.discountAmount?.toString() || "");
+      setCountryId(productData.countryId?.toString() || "1");
       
       if (productData.categories && productData.categories.length > 0) {
         const uniqueIds = new Set(productData.categories.map((cat: any) => cat.id));
         setSelectedCategoryIds(Array.from(uniqueIds));
       }
+
+      // Existing Configs တွေကို Load လုပ်တဲ့အပိုင်း (လိုအပ်ရင် Logic ထပ်ဖြည့်ရနိုင်ပါတယ်)
+      // productData.productCodeValues ကနေ config ပြန်ဆောက်တဲ့ logic က ရှုပ်ထွေးနိုင်လို့ 
+      // ဒီမှာ simple example အနေနဲ့ထားခဲ့ပါတယ် သို့မဟုတ် default တန်ဖိုးထားပါမယ်
     }
   }, [productData]);
 
-  
   const getDescendantIds = (parentId: number, allCats: any[]): number[] => {
     let ids: number[] = [];
-   
     const children = allCats.filter(c => (c.parentCategory?.id === parentId) || (c.parentId === parentId));
-    
     children.forEach(child => {
         ids.push(child.id);
         ids = [...ids, ...getDescendantIds(child.id, allCats)];
@@ -79,25 +142,18 @@ export function CreateProduct() {
     return ids;
   };
 
-
   const toggleCategory = (catId: number) => {
-   
     const descendants = getDescendantIds(catId, categoriesList);
     const targetIds = [catId, ...descendants];
-
     setSelectedCategoryIds(prev => {
       const isCurrentlySelected = prev.includes(catId);
       let newSelection;
-
       if (isCurrentlySelected) {
-      
         newSelection = prev.filter(id => !targetIds.includes(id));
       } else {
-       
         const toAdd = targetIds.filter(id => !prev.includes(id));
         newSelection = [...prev, ...toAdd];
       }
-
       if (newSelection.length > 0 && errors.category) {
         setErrors(prevErr => ({ ...prevErr, category: undefined }));
       }
@@ -105,65 +161,84 @@ export function CreateProduct() {
     });
   };
 
-  const handleMutationError = (error: any) => {
+  const addConfiguration = () => {
+    setConfigurations([
+      ...configurations,
+      { id: crypto.randomUUID(), color: '', size: '', price: '', quantity: '100' }
+    ]);
+  };
 
-    const errorMessage = "This SKU is already taken. Please choose another.";
-    
-    if (error.status===400) {
-       setErrors(prev => ({ 
-           ...prev, 
-           sku: "This SKU is already taken. Please choose another." 
-       }));
-    } else {
-       alert(`Error: ${errorMessage}`);
+  const removeConfiguration = (id: string) => {
+    if (configurations.length > 1) {
+      setConfigurations(configurations.filter(c => c.id !== id));
     }
   };
-  
+
+  const updateConfiguration = (id: string, field: keyof ConfigRow, value: any) => {
+    setConfigurations(configurations.map(c => 
+      c.id === id ? { ...c, [field]: value } : c
+    ));
+  };
+
   const handleSave = () => {
     const newErrors: typeof errors = {};
     let isValid = true;
 
-    if (!name.trim()) { newErrors.name = "Product Name is required"; isValid = false; }
-    if (!sku.trim()) { newErrors.sku = "SKU is required"; isValid = false; }
-    if (!price || parseFloat(price) <= 0) { newErrors.price = "Price is required > 0"; isValid = false; }
-    if (selectedCategoryIds.length === 0) { newErrors.category = "Select at least one category"; isValid = false; }
+    if (!name.trim()) { newErrors.name = "Required"; isValid = false; }
+    if (selectedCategoryIds.length === 0) { newErrors.category = "Required"; isValid = false; }
+    
+    // Config Validation ပြင်ဆင်ထားပါတယ်
+    const invalidConfig = configurations.some(c => 
+        !c.price || parseFloat(c.price) <= 0 || !c.color || !c.size
+    );
+    if (invalidConfig) {
+        newErrors.config = "All configurations must have a Color, a Size, and a valid Price.";
+        isValid = false;
+    }
 
     setErrors(newErrors);
     if (!isValid) return;
 
+    // Payload Construction for Single Selection
+    const productCodeValues: ProductCodeValueRequest[] = configurations.map(config => ({
+        colorId: parseInt(config.color),
+        sizeId: parseInt(config.size),
+        price: parseFloat(config.price),
+        quantity: parseInt(config.quantity) || 0
+    }));
+    
     const payload: ProductRequest = {
-      name, sku,
-      quantity: parseInt(quantity) || 0,
-      price: parseFloat(price) || 0,
-      description, shortDescription: shortDesc,
+      name,
+      shortDescription: shortDesc,
+      longDescription,
+      status: "Active",
+      tags,
+      isTaxable,
+      discountType,
+      discountAmount: discountAmount ? parseFloat(discountAmount) : 0,
       weight: parseFloat(weight) || 0,
-      isTaxable, allowBackorder,
+      countryId: parseInt(countryId) || 1,
       categoryIds: selectedCategoryIds,
-      tags: "", 
-      status: status, 
-      countryId: 1,
+      productCodeValues: productCodeValues,
+      allowBackorder: false
     };
 
     if (isEditMode && id) {
-      updateProductMutation.mutate({ id: parseInt(id), data: payload }, {
+      updateProductMutation.mutate({ id: parseInt(id), data: payload }, { 
         onSuccess: () => navigate("/products"),
-        onError: handleMutationError 
+        onError: () => alert("Failed to update product") 
       });
     } else {
-      createProductMutation.mutate(payload, {
+      createProductMutation.mutate(payload, { 
         onSuccess: () => navigate("/products"),
-        onError: handleMutationError 
+        onError: () => alert("Failed to create product")
       });
     }
   };
 
-  const handleInputChange = (setter: any, field: keyof typeof errors, value: string) => {
-    setter(value);
-    if (errors[field]) setErrors(prev => ({ ...prev, [field]: undefined }));
-  };
-
   const renderCategoryTree = (categories: any[], parentId: number | null = null, level = 0) => {
-    const nodes = categories.filter((cat: any) => {
+      // (Tree rendering code same as before)
+      const nodes = categories.filter((cat: any) => {
         if (parentId === null) return !cat.parentCategory && !cat.parentId;
         return (cat.parentCategory?.id === parentId) || (cat.parentId === parentId);
     });
@@ -172,8 +247,7 @@ export function CreateProduct() {
       <div key={node.id} style={{ marginLeft: level * 24 + 'px' }} className="mt-1">
          <div className="flex items-center space-x-2 hover:bg-gray-50 p-1 rounded font-medium">
               <input 
-                  type="checkbox" 
-                  id={`cat-${node.id}`}
+                  type="checkbox" id={`cat-${node.id}`}
                   checked={selectedCategoryIds.includes(node.id)}
                   onChange={() => toggleCategory(node.id)}
                   className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600 cursor-pointer"
@@ -185,10 +259,11 @@ export function CreateProduct() {
     ));
   };
 
-  if (isEditMode && isProductLoading) return <div className="p-8">Loading product data...</div>;
+  if (isEditMode && isProductLoading) return <div className="p-8">Loading...</div>;
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto bg-gray-50/50 min-h-screen">
+       {/* Header Section */}
        <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/products")}><ChevronLeft className="h-5 w-5 text-gray-500" /></Button>
@@ -202,64 +277,156 @@ export function CreateProduct() {
        </div>
 
        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Left Column - Main Info */}
         <div className="xl:col-span-2 space-y-8">
             <Card className="border-none shadow-sm">
                 <CardHeader><CardTitle className="text-lg font-semibold">General Information</CardTitle></CardHeader>
                 <CardContent className="space-y-6">
                     <div className="space-y-2">
                         <Label htmlFor="productName" className={errors.name ? "text-destructive" : ""}>Product Name *</Label>
-                        <Input id="productName" value={name} onChange={(e) => handleInputChange(setName, 'name', e.target.value)} className={`bg-gray-50/50 ${errors.name ? "border-destructive focus-visible:ring-destructive" : ""}`} />
+                        <Input id="productName" value={name} onChange={(e) => setName(e.target.value)} className={errors.name ? "border-destructive" : ""} />
                         {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="shortDesc">Short Description</Label>
-                        <Input id="shortDesc" value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} className="bg-gray-50/50" />
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Short Description</Label>
+                            <Input value={shortDesc} onChange={(e) => setShortDesc(e.target.value)} placeholder="Brief summary" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Tags</Label>
+                            <Input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Modern, Cotton, etc." />
+                        </div>
                     </div>
+
                     <div className="space-y-2">
-                        <Label>Description</Label>
-                        <textarea ref={textareaRef} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full p-4 min-h-[160px] border rounded-md bg-white outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2" placeholder="Enter product description..." />
+                        <Label>Long Description (Detailed)</Label>
+                        <textarea value={longDescription} onChange={(e) => setLongDescription(e.target.value)} className="w-full p-4 min-h-[120px] border rounded-md bg-white" placeholder="Extensive product details and story..." />
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* --- CONFIGURATION CARD (UPDATED) --- */}
+            <Card className="border-none shadow-sm">
+                <div className="flex items-center justify-between p-6 pb-2">
+                     <CardTitle className="text-lg font-semibold">Product Variants (Color & Size)</CardTitle>
+                     <Button onClick={addConfiguration} variant="outline" size="sm" className="gap-2">
+                        <Plus className="h-4 w-4" /> Add Variant
+                     </Button>
+                </div>
+                <CardContent className="space-y-6">
+                    {errors.config && <p className="text-sm text-destructive bg-destructive/10 p-2 rounded">{errors.config}</p>}
+                    
+                    {configurations.map((config, index) => (
+                        <div key={config.id} className="relative bg-white p-4 rounded-lg border shadow-sm">
+                            {index > 0 && <div className="absolute top-0 left-0 w-full h-[1px] bg-gray-100 -mt-3" />}
+                            <Button 
+                                variant="ghost" size="icon" 
+                                className="absolute top-2 right-2 text-red-500 hover:bg-red-50"
+                                onClick={() => removeConfiguration(config.id)}
+                                disabled={configurations.length === 1}
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+
+                            <h4 className="text-sm font-medium text-gray-900 mb-4 bg-gray-100 inline-block px-2 py-1 rounded">
+                                Variant #{index + 1}
+                            </h4>
+                            
+                            <div className="grid grid-cols-2 gap-6 mb-4">
+                                {/* Color Selection */}
+                                <div className="space-y-2">
+                                    <Label>Color</Label>
+                                    <Select value={config.color} onValueChange={(val) => updateConfiguration(config.id, 'color', val)}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a color" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {colorsList.map((c) => (
+                                                <SelectItem key={c.value} value={c.value}>
+                                                    <div className="flex items-center gap-2">
+                                                        <div 
+                                                            className="w-4 h-4 rounded-full border border-gray-300 shadow-sm"
+                                                            style={{ backgroundColor: c.description || '#fff' }} 
+                                                        />
+                                                        <span>{c.name}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Size Selection */}
+                                <div className="space-y-2">
+                                    <Label>Size</Label>
+                                    <Select value={config.size} onValueChange={(val) => updateConfiguration(config.id, 'size', val)}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select a size" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {sizesList.map((s) => (
+                                                <SelectItem key={s.value} value={s.value}>
+                                                    {s.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4"> 
+                                <div className="space-y-2">
+                                    <Label>Price *</Label>
+                                    <Input type="number" placeholder="0.00" value={config.price} onChange={(e) => updateConfiguration(config.id, 'price', e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Quantity</Label>
+                                    <Input type="number" placeholder="100" value={config.quantity} onChange={(e) => updateConfiguration(config.id, 'quantity', e.target.value)} />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </CardContent>
             </Card>
         </div>
 
+        {/* Right Column - Settings (Same as before) */}
         <div className="space-y-8">
             <Card className="border-none shadow-sm">
-                <CardHeader><CardTitle className="text-lg font-semibold">Pricing</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="basePrice" className={errors.price ? "text-destructive" : ""}>Base Price *</Label>
-                        <Input id="basePrice" type="number" value={price} onChange={(e) => handleInputChange(setPrice, 'price', e.target.value)} className={`bg-gray-50/50 ${errors.price ? "border-destructive focus-visible:ring-destructive" : ""}`} />
-                        {errors.price && <p className="text-sm text-destructive">{errors.price}</p>}
-                    </div>
-                    <div className="flex items-center gap-2 pt-2">
-                        <input type="checkbox" id="tax" checked={isTaxable} onChange={(e) => setIsTaxable(e.target.checked)} className="h-4 w-4" />
-                        <Label htmlFor="tax">Charge tax on this product</Label>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-sm">
-                <CardHeader><CardTitle className="text-lg font-semibold">Inventory</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="sku" className={errors.sku ? "text-destructive" : ""}>SKU *</Label>
-                        <Input id="sku" value={sku} onChange={(e) => handleInputChange(setSku, 'sku', e.target.value)} className={`bg-gray-50/50 ${errors.sku ? "border-destructive focus-visible:ring-destructive" : ""}`} />
-                        
-                        {errors.sku && (
-                            <p className="text-sm text-destructive mt-1 font-medium flex items-center gap-1">
-                                ⚠️ {errors.sku}
-                            </p>
-                        )}
-                    </div>
+                <CardHeader><CardTitle className="text-lg font-semibold">Settings</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="quantity">Quantity</Label>
-                            <Input id="quantity" type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} className="bg-gray-50/50" />
+                            <Label>Weight (kg)</Label>
+                            <Input type="number" value={weight} onChange={(e) => setWeight(e.target.value)} />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="weight">Weight (kg)</Label>
-                            <Input id="weight" type="number" value={weight} onChange={(e) => setWeight(e.target.value)} className="bg-gray-50/50" />
+                            <Label>Country ID</Label>
+                            <Input type="number" value={countryId} onChange={(e) => setCountryId(e.target.value)} />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t">
+                         <Label>Discount</Label>
+                         <div className="flex gap-2">
+                             <Select value={discountType} onValueChange={setDiscountType}>
+                                <SelectTrigger className="w-[130px]">
+                                    <SelectValue placeholder="Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="PERCENTAGE">Percent %</SelectItem>
+                                    <SelectItem value="AMOUNT">Fixed Amount</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Input type="number" placeholder="Amount" value={discountAmount} onChange={(e) => setDiscountAmount(e.target.value)} />
+                         </div>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center gap-2">
+                            <input type="checkbox" id="tax" checked={isTaxable} onChange={(e) => setIsTaxable(e.target.checked)} className="h-4 w-4" />
+                            <Label htmlFor="tax">Taxable Product</Label>
                         </div>
                     </div>
                 </CardContent>
@@ -267,16 +434,15 @@ export function CreateProduct() {
 
              <Card className="border-none shadow-sm">
                 <CardHeader><CardTitle className="text-lg font-semibold">Categorization</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent>
                     <div className="space-y-2">
-                        <Label className={errors.category ? "text-destructive" : ""}>Categories * (Multi-select)</Label>
+                        <Label className={errors.category ? "text-destructive" : ""}>Categories *</Label>
                         <div className={`border rounded-md p-3 max-h-[300px] overflow-y-auto bg-white space-y-2 ${errors.category ? "border-destructive" : ""}`}>
                             {isCategoriesLoading && <p className="text-sm text-gray-500">Loading categories...</p>}
                             {!isCategoriesLoading && categoriesList.length === 0 && <p className="text-sm text-gray-500">No categories found.</p>}
                             {!isCategoriesLoading && renderCategoryTree(categoriesList)}
                         </div>
                         {errors.category && <p className="text-sm text-destructive">{errors.category}</p>}
-                        <p className="text-xs text-gray-500">Selected: {selectedCategoryIds.length} categories</p>
                     </div>
                 </CardContent>
             </Card>
