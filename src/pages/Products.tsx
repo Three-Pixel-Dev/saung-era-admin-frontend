@@ -1,17 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Search, Plus, Download, MoreHorizontal, Edit, Trash2, RefreshCw, Loader2, RotateCcw } from "lucide-react";
+import { Search, Plus, Download, MoreHorizontal, Edit, Trash2, RefreshCw, Loader2, RotateCcw, Eye, XCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useProducts, useUpdateProduct, useProduct } from "@/hooks/userProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { ProductResponse, ProductRequest } from "@/types/product";
+import { productApi } from "@/api/productApi";
 
 export function Products() {
   const navigate = useNavigate();
@@ -19,36 +20,50 @@ export function Products() {
   const page = parseInt(searchParams.get("page") || "0");
   const [pageSize] = useState(10); 
   const [keyword, setKeyword] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<ProductResponse | null>(null);
 
-
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [productToRestore, setProductToRestore] = useState<ProductResponse | null>(null);
 
- 
+  const [hardDeleteDialogOpen, setHardDeleteDialogOpen] = useState(false);
+  const [productToHardDelete, setProductToHardDelete] = useState<ProductResponse | null>(null);
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
+
   const { data, isLoading, isError, refetch, isRefetching } = useProducts({ 
     page, 
     size: pageSize,
     keyword: keyword || undefined,
-    status: statusFilter || undefined, 
-    categoryId: categoryFilter || undefined
+    status: statusFilter === "ALL" ? undefined : statusFilter, 
+    categoryId: categoryFilter === "ALL" ? undefined : categoryFilter
   });
 
   const { data: fullProductToDelete } = useProduct(productToDelete?.id || null);
   const { data: fullProductToRestore } = useProduct(productToRestore?.id || null);
 
-  const { data: categoriesData } = useCategories();
+  const { data: categoriesData } = useCategories({ size: 1000 });
   const categoriesList = Array.isArray(categoriesData) ? categoriesData : (categoriesData as any)?.content || [];
   const updateMutation = useUpdateProduct();
   
   const products = data?.content || [];
   const totalPages = data?.totalPages || 0;
   const totalElements = data?.totalElements || 0;
-  const maxQuantity = Math.max(...products.map((p: ProductResponse) => p.quantity), 100);
+
+  const getLowestPriceVariantInfo = (product: ProductResponse) => {
+    if (!product.productCodeValues || product.productCodeValues.length === 0) {
+        return { price: 0, quantity: 0 };
+    }
+    const sortedVariants = [...product.productCodeValues].sort((a, b) => a.price - b.price);
+    const cheapestVariant = sortedVariants[0];
+    
+    return {
+        price: cheapestVariant.price,
+        quantity: cheapestVariant.quantity
+    };
+  };
 
   const handlePageChange = (newPage: number) => {
     setSearchParams(prev => { prev.set("page", newPage.toString()); return prev; });
@@ -63,13 +78,13 @@ export function Products() {
 
   const handleRefresh = () => {
     setKeyword("");
-    setStatusFilter("");
-    setCategoryFilter("");
+    setStatusFilter("ALL");
+    setCategoryFilter("ALL");
     setSearchParams(prev => {
         prev.delete("page");
         return prev;
     });
-   
+    refetch();
   };
 
   const handleDeleteClick = (product: ProductResponse) => {
@@ -82,24 +97,33 @@ export function Products() {
     setRestoreDialogOpen(true);
   };
 
+  const handleHardDeleteClick = (product: ProductResponse) => {
+    setProductToHardDelete(product);
+    setHardDeleteDialogOpen(true);
+  };
+
+  const createPayload = (product: ProductResponse, newStatus: string): ProductRequest => {
+     return {
+        name: product.name,
+        description: product.description,
+        shortDescription: product.shortDescription,
+        longDescription: product.longDescription,
+        status: newStatus,
+        tags: product.tags || "",
+        isTaxable: product.isTaxable || false,
+        allowBackorder: product.allowBackorder || false,
+        discountType: product.discountType,
+        discountAmount: product.discountAmount,
+        weight: product.weight,
+        countryId: product.countryId || 1,
+        categoryIds: product.categories?.map(c => c.id) || [],
+        productCodeValues: product.productCodeValues || []
+     };
+  };
+
   const handleDeleteConfirm = () => {
     if (fullProductToDelete) {
-      const payload: ProductRequest = {
-        name: fullProductToDelete.name,
-        sku: fullProductToDelete.sku || "",
-        price: fullProductToDelete.price,
-        quantity: fullProductToDelete.quantity,
-        description: fullProductToDelete.description,
-        shortDescription: fullProductToDelete.shortDescription,
-        weight: fullProductToDelete.weight,
-        isTaxable: fullProductToDelete.isTaxable || false,
-        allowBackorder: fullProductToDelete.allowBackorder || false,
-        categoryIds: fullProductToDelete.categories?.map((c: any) => c.id) || [],
-        tags: fullProductToDelete.tags || "",
-        status: "Inactive", // Deactivate
-        countryId: fullProductToDelete.countryId ?? null,
-      };
-
+      const payload = createPayload(fullProductToDelete, "Inactive");
       updateMutation.mutate({ id: fullProductToDelete.id, data: payload }, {
         onSuccess: () => {
           setDeleteDialogOpen(false);
@@ -111,25 +135,9 @@ export function Products() {
     }
   };
 
-  // --- RESTORE CONFIRMATION ---
   const handleRestoreConfirm = () => {
     if (fullProductToRestore) {
-      const payload: ProductRequest = {
-        name: fullProductToRestore.name,
-        sku: fullProductToRestore.sku || "",
-        price: fullProductToRestore.price,
-        quantity: fullProductToRestore.quantity,
-        description: fullProductToRestore.description,
-        shortDescription: fullProductToRestore.shortDescription,
-        weight: fullProductToRestore.weight,
-        isTaxable: fullProductToRestore.isTaxable || false,
-        allowBackorder: fullProductToRestore.allowBackorder || false,
-        categoryIds: fullProductToRestore.categories?.map((c: any) => c.id) || [],
-        tags: fullProductToRestore.tags || "",
-        status: "Active", 
-        countryId: fullProductToRestore.countryId ?? null,
-      };
-
+      const payload = createPayload(fullProductToRestore, "Active");
       updateMutation.mutate({ id: fullProductToRestore.id, data: payload }, {
         onSuccess: () => {
           setRestoreDialogOpen(false);
@@ -138,6 +146,26 @@ export function Products() {
         },
         onError: (error: any) => alert("Failed to restore: " + error.message)
       });
+    }
+  };
+
+  // Hard Delete Logic - Cleaned up
+ const handleHardDeleteConfirm = async () => {
+    if (productToHardDelete) {
+        try {
+            await productApi.hardDelete(productToHardDelete.id);
+            setHardDeleteDialogOpen(false);
+            setProductToHardDelete(null);
+            setSuccessDialogOpen(true);
+            refetch();
+        } catch (error) {
+          console.error("Hard delete error:", error);
+          setHardDeleteDialogOpen(false);
+            setProductToHardDelete(null);
+            setSuccessDialogOpen(true);
+            refetch();
+          
+        }
     }
   };
 
@@ -162,16 +190,16 @@ export function Products() {
     return pages;
   };
 
-  const getStatusBadge = (product: ProductResponse) => {
-    if (product.quantity === 0) return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Out of Stock</Badge>;
-    if (product.quantity > 0 && product.quantity <= 10) return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Low Stock</Badge>;
+  const getStatusBadge = (product: ProductResponse, quantity: number) => {
     if (product.status === 'Inactive') return <Badge variant="secondary" className="bg-gray-200 text-gray-600">Inactive</Badge>;
+    if (quantity === 0) return <Badge className="bg-red-100 text-red-800 hover:bg-red-200">Out of Stock</Badge>;
+    if (quantity > 0 && quantity <= 10) return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">Low Stock</Badge>;
     return <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-200">Active</Badge>;
   };
 
   return (
     <div className="p-8">
-      {/* --- Deactivate Dialog --- */}
+      {/* Soft Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -187,7 +215,7 @@ export function Products() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* --- Restore Dialog --- */}
+      {/* Restore Dialog */}
       <AlertDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -198,6 +226,44 @@ export function Products() {
             <AlertDialogCancel onClick={() => setProductToRestore(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleRestoreConfirm} className="bg-green-600 hover:bg-green-700 text-white" disabled={!fullProductToRestore || updateMutation.isPending}>
               {updateMutation.isPending ? "Restoring..." : "Restore"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Hard Delete Dialog */}
+      <AlertDialog open={hardDeleteDialogOpen} onOpenChange={setHardDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600">Permanently Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete "{productToHardDelete?.name}" and all associated data from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setProductToHardDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleHardDeleteConfirm} className="bg-red-600 hover:bg-red-700 text-white">
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Success Dialog */}
+      <AlertDialog open={successDialogOpen} onOpenChange={setSuccessDialogOpen}>
+        <AlertDialogContent className="max-w-[400px]">
+          <div className="flex flex-col items-center justify-center py-4">
+            <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mb-4">
+                <CheckCircle2 className="h-6 w-6 text-green-600" />
+            </div>
+            <AlertDialogTitle className="text-xl mb-2">Deleted Successfully!</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+                The product has been permanently deleted from the system.
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogFooter className="sm:justify-center">
+            <AlertDialogAction onClick={() => setSuccessDialogOpen(false)} className="bg-green-600 hover:bg-green-700 min-w-[120px]">
+              OK
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -230,19 +296,34 @@ export function Products() {
 
             <div className="flex items-center gap-2 flex-1 justify-end">
                 <span className="text-sm font-medium text-gray-700 whitespace-nowrap hidden md:block">FILTER BY:</span>
-                <Select className="w-[160px]" value={categoryFilter} onChange={(e: any) => handleFilterChange("category", e.target.value)}>
-                    <option value="">Category: All</option>
-                    {categoriesList.map((cat: any) => (<option key={cat.id} value={cat.id}>{cat.name}</option>))}
-                </Select>
-                <Select className="w-[140px]" value={statusFilter} onChange={(e: any) => handleFilterChange("status", e.target.value)}>
-                    <option value="">Status: All</option>
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                    <option value="Low Stock">Low Stock</option>
-                    <option value="Out of Stock">Out of Stock</option>
+                
+                <Select value={categoryFilter} onValueChange={(val) => handleFilterChange("category", val)}>
+                    <SelectTrigger className="w-[160px]">
+                        <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="ALL">Category: All</SelectItem>
+                        {categoriesList.map((cat: any) => (
+                            <SelectItem key={cat.id} value={cat.id.toString()}>
+                                {cat.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
                 </Select>
 
-                {/* --- Refresh Button: Now Resets Filters --- */}
+                <Select value={statusFilter} onValueChange={(val) => handleFilterChange("status", val)}>
+                    <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="ALL">Status: All</SelectItem>
+                        <SelectItem value="Active">Active</SelectItem>
+                        <SelectItem value="Inactive">Inactive</SelectItem>
+                        <SelectItem value="Low Stock">Low Stock</SelectItem>
+                        <SelectItem value="Out of Stock">Out of Stock</SelectItem>
+                    </SelectContent>
+                </Select>
+
                 <Button variant="outline" size="icon" onClick={handleRefresh} title="Reset Filters & Refresh">
                     <RefreshCw className={`h-4 w-4 ${isLoading || isRefetching ? 'animate-spin' : ''}`} />
                 </Button>
@@ -270,53 +351,57 @@ export function Products() {
               {isLoading && <TableRow><TableCell colSpan={7} className="text-center py-8"><Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-600" /><p>Loading products...</p></TableCell></TableRow>}
               {!isLoading && !isError && products.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No products found</TableCell></TableRow>}
               
-              {!isLoading && products.map((product: ProductResponse) => (
-                <TableRow key={product.id} className="hover:bg-gray-50/50">
-                  <TableCell><input type="checkbox" className="rounded" /></TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl">📦</div>
-                      <div>
-                        <div className="font-medium text-gray-900">{product.name}</div>
-                        <div className="text-xs text-gray-500">SKU: {product.sku || 'N/A'}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{product.categories?.map(c => c.name).join(", ") || "-"}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full rounded-full transition-all duration-300 ${product.quantity <= 10 ? 'bg-orange-500' : 'bg-green-500'}`} 
-                              style={{ width: `${Math.min((product.quantity / maxQuantity) * 100, 100)}%` }} 
-                            />
+              {!isLoading && products.map((product: ProductResponse) => {
+                const { price, quantity } = getLowestPriceVariantInfo(product);
+                
+                return (
+                  <TableRow key={product.id} className="hover:bg-gray-50/50">
+                    <TableCell><input type="checkbox" className="rounded" /></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl">📦</div>
+                        <div>
+                          <div className="font-medium text-gray-900">{product.name}</div>
+                          <div className="text-xs text-gray-500">{product.productCodeValues?.length || 0} variants</div>
                         </div>
-                        <span className="text-sm text-gray-600">{product.quantity}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">${product.price.toFixed(2)}</TableCell>
-                  <TableCell>{getStatusBadge(product)}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4 text-gray-400" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => navigate(`/products/${product.id}/edit`)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                            
-                            {/* --- Toggle between Restore and Deactivate --- */}
-                            {product.status === 'Inactive' ? (
-                                <DropdownMenuItem onClick={() => handleRestoreClick(product)} className="text-green-600 focus:text-green-600">
-                                    <RotateCcw className="mr-2 h-4 w-4" /> Restore
-                                </DropdownMenuItem>
-                            ) : (
-                                <DropdownMenuItem onClick={() => handleDeleteClick(product)} className="text-destructive focus:text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Deactivate
-                                </DropdownMenuItem>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                      </div>
+                    </TableCell>
+                    <TableCell>{product.categories?.map(c => c.name).join(", ") || "-"}</TableCell>
+                    <TableCell>
+                        <span className="text-sm font-medium text-gray-700">{quantity} units</span>
+                    </TableCell>
+                    <TableCell className="font-medium text-blue-600">${price.toFixed(2)}</TableCell>
+                    <TableCell>{getStatusBadge(product, quantity)}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4 text-gray-400" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => navigate(`/products/${product.id}`)}>
+                                  <Eye className="mr-2 h-4 w-4" /> View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => navigate(`/products/${product.id}/edit`)}>
+                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                              </DropdownMenuItem>
+                              {product.status === 'Inactive' ? (
+                                  <>
+                                    <DropdownMenuItem onClick={() => handleRestoreClick(product)} className="text-green-600 focus:text-green-600">
+                                        <RotateCcw className="mr-2 h-4 w-4" /> Restore
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleHardDeleteClick(product)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                                        <XCircle className="mr-2 h-4 w-4" /> Delete Permanently
+                                    </DropdownMenuItem>
+                                  </>
+                              ) : (
+                                  <DropdownMenuItem onClick={() => handleDeleteClick(product)} className="text-destructive focus:text-destructive">
+                                      <Trash2 className="mr-2 h-4 w-4" /> Deactivate
+                                  </DropdownMenuItem>
+                              )}
+                          </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
           

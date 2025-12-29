@@ -1,5 +1,3 @@
-// src/api/productApi.ts
-
 import { apiClient } from '@/lib/api';
 import { ProductRequest, ProductResponse } from '@/types/product';
 
@@ -9,7 +7,6 @@ export const productApi = {
   
   getAll: (params?: Record<string, unknown>) => {
     const searchParams = new URLSearchParams();
-    
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
@@ -17,10 +14,8 @@ export const productApi = {
         }
       });
     }
-
     const queryString = searchParams.toString();
     const url = queryString ? `${BASE_URL}?${queryString}` : BASE_URL;
-    
     return apiClient.get<any>(url);
   },
 
@@ -33,6 +28,10 @@ export const productApi = {
   update: (id: number, data: ProductRequest) => 
     apiClient.put<ProductResponse>(`${BASE_URL}/${id}`, data),
 
+
   delete: (id: number) => 
     apiClient.delete<void>(`${BASE_URL}/${id}`),
+
+  hardDelete: (id: number) => 
+    apiClient.delete<void>(`${BASE_URL}/${id}/hard`),
 };

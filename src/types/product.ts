@@ -1,48 +1,45 @@
 import { CategoryResponse } from "./category";
 
+export interface ProductCodeValueRequest {
+  colorId: number;
+  sizeId: number;
+  price: number;
+  quantity: number;
+}
+
 export interface ProductResponse {
   id: number;
   name: string;
-  price: number;
-  quantity: number;
   description?: string;
   shortDescription?: string;
-  weight?: number;
-  discountAmount?: number;
-  sku?: string;
+  longDescription?: string;
   status?: string;
   tags?: string;
   isTaxable?: boolean;
   allowBackorder?: boolean;
-  categories?: CategoryResponse[];
+  discountType?: string;
+  discountAmount?: number;
+  weight?: number;
   countryId?: number;
+  categories?: CategoryResponse[];
+  productCodeValues?: ProductCodeValueRequest[]; 
+  createdAt?: string; 
+  updatedAt?: string; 
 }
 
 export interface ProductRequest {
   name: string;
   description?: string;
-  quantity: number;
-  price: number;
-  discountType?: string;
-  discountAmount?: number;
   shortDescription?: string;
   longDescription?: string;
-  weight?: number;
-  countryId: number | null;
-  
-  categoryIds: number[];
-  sku: string;
-  tags: string;
   status: string;
+  tags: string;
   isTaxable: boolean;
   allowBackorder: boolean;
-}
-
-export interface PagedResponse<T> {
-  content: T[];
-  page: number;
-  size: number;
-  totalElements: number;
-  totalPages: number;
-  last: boolean;
+  discountType?: string;
+  discountAmount?: number;
+  weight?: number;
+  countryId: number;
+  categoryIds: number[];
+  productCodeValues: ProductCodeValueRequest[];
 }
