@@ -5,28 +5,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// MultiSelect ကို ဖြုတ်လိုက်ပါပြီ
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateProduct, useUpdateProduct, useProduct } from "@/hooks/userProducts";
 import { useCategories } from "@/hooks/useCategories";
 import { ProductRequest, ProductCodeValueRequest } from "@/types/product";
 import { codeApi } from "@/api/codeApi";
 
-// ConfigRow Type ကို ပြင်ဆင်ထားပါတယ် (Array မဟုတ်တော့ပါ)
 type ConfigRow = {
   id: string;
-  color: string; // Single value
-  size: string;  // Single value
+  color: string;
+  size: string;
   price: string;
   quantity: string;
 };
 
-// Option Type အတွက်
 type OptionType = {
   value: string;
-  label: string; // Text label for filtering/display
+  label: string;
   name: string;
-  description?: string; // For Color Hex Code
+  description?: string;
 };
 
 export function CreateProduct() {
@@ -39,7 +36,6 @@ export function CreateProduct() {
   const { data: categoriesData, isLoading: isCategoriesLoading } = useCategories({ size: 1000 });
   const { data: productData, isLoading: isProductLoading } = useProduct(id ? parseInt(id) : null);
   
-  // --- STATE ---
   const [name, setName] = useState("");
   const [shortDesc, setShortDesc] = useState("");
   const [longDescription, setLongDescription] = useState("");
@@ -51,11 +47,9 @@ export function CreateProduct() {
   const [countryId, setCountryId] = useState("1");
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   
-  // Dynamic Options State
   const [colorsList, setColorsList] = useState<OptionType[]>([]);
   const [sizesList, setSizesList] = useState<OptionType[]>([]);
 
-  // Configurations State (Initial Value ပြောင်းထားပါတယ်)
   const [configurations, setConfigurations] = useState<ConfigRow[]>([
     { id: '1', color: '', size: '', price: '', quantity: '100' }
   ]);
@@ -70,7 +64,6 @@ export function CreateProduct() {
     ? categoriesData 
     : (categoriesData as any)?.content || [];
 
-  // --- FETCH OPTIONS FROM API ---
   useEffect(() => {
     const fetchOptions = async () => {
       try {
@@ -87,7 +80,7 @@ export function CreateProduct() {
             value: c.id.toString(),
             label: c.name,
             name: c.name,
-            description: c.description // Hex code keep ထားပါတယ်
+            description: c.description
           })));
         }
 
@@ -126,9 +119,17 @@ export function CreateProduct() {
         setSelectedCategoryIds(Array.from(uniqueIds));
       }
 
-      // Existing Configs တွေကို Load လုပ်တဲ့အပိုင်း (လိုအပ်ရင် Logic ထပ်ဖြည့်ရနိုင်ပါတယ်)
-      // productData.productCodeValues ကနေ config ပြန်ဆောက်တဲ့ logic က ရှုပ်ထွေးနိုင်လို့ 
-      // ဒီမှာ simple example အနေနဲ့ထားခဲ့ပါတယ် သို့မဟုတ် default တန်ဖိုးထားပါမယ်
+      // Load Existing Configurations
+      if (productData.productCodeValues && productData.productCodeValues.length > 0) {
+        const loadedConfigs = productData.productCodeValues.map((pcv: any) => ({
+             id: crypto.randomUUID(),
+             color: pcv.colorId.toString(),
+             size: pcv.sizeId.toString(),
+             price: pcv.price.toString(),
+             quantity: pcv.quantity.toString()
+        }));
+        setConfigurations(loadedConfigs);
+      }
     }
   }, [productData]);
 
@@ -179,15 +180,14 @@ export function CreateProduct() {
       c.id === id ? { ...c, [field]: value } : c
     ));
   };
-
-  const handleSave = () => {
+const handleSave = () => {
     const newErrors: typeof errors = {};
     let isValid = true;
 
     if (!name.trim()) { newErrors.name = "Required"; isValid = false; }
     if (selectedCategoryIds.length === 0) { newErrors.category = "Required"; isValid = false; }
     
-    // Config Validation ပြင်ဆင်ထားပါတယ်
+    // Config Validation
     const invalidConfig = configurations.some(c => 
         !c.price || parseFloat(c.price) <= 0 || !c.color || !c.size
     );
@@ -196,10 +196,22 @@ export function CreateProduct() {
         isValid = false;
     }
 
+    const variantSet = new Set();
+    const hasDuplicateVariant = configurations.some(c => {
+        const key = `${c.color}-${c.size}`;
+        if (variantSet.has(key)) return true;
+        variantSet.add(key);
+        return false;
+    });
+
+    if (hasDuplicateVariant) {
+        newErrors.config = "Duplicate variants (Same Color & Size) are not allowed.";
+        isValid = false;
+    }
+
     setErrors(newErrors);
     if (!isValid) return;
 
-    // Payload Construction for Single Selection
     const productCodeValues: ProductCodeValueRequest[] = configurations.map(config => ({
         colorId: parseInt(config.color),
         sizeId: parseInt(config.size),
@@ -237,7 +249,6 @@ export function CreateProduct() {
   };
 
   const renderCategoryTree = (categories: any[], parentId: number | null = null, level = 0) => {
-      // (Tree rendering code same as before)
       const nodes = categories.filter((cat: any) => {
         if (parentId === null) return !cat.parentCategory && !cat.parentId;
         return (cat.parentCategory?.id === parentId) || (cat.parentId === parentId);
@@ -263,7 +274,6 @@ export function CreateProduct() {
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto bg-gray-50/50 min-h-screen">
-       {/* Header Section */}
        <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/products")}><ChevronLeft className="h-5 w-5 text-gray-500" /></Button>
@@ -277,7 +287,6 @@ export function CreateProduct() {
        </div>
 
        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        {/* Left Column - Main Info */}
         <div className="xl:col-span-2 space-y-8">
             <Card className="border-none shadow-sm">
                 <CardHeader><CardTitle className="text-lg font-semibold">General Information</CardTitle></CardHeader>
@@ -306,7 +315,6 @@ export function CreateProduct() {
                 </CardContent>
             </Card>
 
-            {/* --- CONFIGURATION CARD (UPDATED) --- */}
             <Card className="border-none shadow-sm">
                 <div className="flex items-center justify-between p-6 pb-2">
                      <CardTitle className="text-lg font-semibold">Product Variants (Color & Size)</CardTitle>
@@ -334,7 +342,6 @@ export function CreateProduct() {
                             </h4>
                             
                             <div className="grid grid-cols-2 gap-6 mb-4">
-                                {/* Color Selection */}
                                 <div className="space-y-2">
                                     <Label>Color</Label>
                                     <Select value={config.color} onValueChange={(val) => updateConfiguration(config.id, 'color', val)}>
@@ -357,7 +364,6 @@ export function CreateProduct() {
                                     </Select>
                                 </div>
 
-                                {/* Size Selection */}
                                 <div className="space-y-2">
                                     <Label>Size</Label>
                                     <Select value={config.size} onValueChange={(val) => updateConfiguration(config.id, 'size', val)}>
@@ -391,7 +397,6 @@ export function CreateProduct() {
             </Card>
         </div>
 
-        {/* Right Column - Settings (Same as before) */}
         <div className="space-y-8">
             <Card className="border-none shadow-sm">
                 <CardHeader><CardTitle className="text-lg font-semibold">Settings</CardTitle></CardHeader>

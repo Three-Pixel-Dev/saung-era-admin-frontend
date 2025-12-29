@@ -22,7 +22,9 @@ export interface ProductResponse {
   weight?: number;
   countryId?: number;
   categories?: CategoryResponse[];
-  productCodeValues?: ProductCodeValueRequest[];
+  productCodeValues?: ProductCodeValueRequest[]; 
+  createdAt?: string; 
+  updatedAt?: string; 
 }
 
 export interface ProductRequest {

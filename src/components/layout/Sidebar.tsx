@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -8,7 +9,11 @@ import {
   Megaphone, 
   Settings,
   Store,
-  Grid3x3
+  Grid3x3,
+  User,
+  Cog,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -21,11 +26,23 @@ const navigation = [
   { name: "Customers", href: "/customers", icon: Users },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Marketing", href: "/marketing", icon: Megaphone },
-  { name: "Settings", href: "/settings", icon: Settings },
+];
+
+const settingsSubMenu = [
+  { name: "Profile", href: "/settings/profile", icon: User },
+  { name: "Configurations", href: "/settings/configurations", icon: Cog },
 ];
 
 export function Sidebar() {
   const location = useLocation();
+  const isSettingsActive = location.pathname.startsWith("/settings");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(isSettingsActive);
+
+  useEffect(() => {
+    if (isSettingsActive) {
+      setIsSettingsOpen(true);
+    }
+  }, [isSettingsActive]);
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-white">
@@ -41,9 +58,8 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-4">
+      <nav className="flex-1 space-y-1 p-4 overflow-y-auto">
         {navigation.map((item) => {
-         
           const isActive = item.href === "/" 
             ? location.pathname === "/" 
             : location.pathname.startsWith(item.href);
@@ -64,6 +80,53 @@ export function Sidebar() {
             </Link>
           );
         })}
+
+        {/* Settings with sub-menu */}
+        <div>
+          <button
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className={cn(
+              "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              isSettingsActive
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-700 hover:bg-gray-100"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <Settings className="h-5 w-5" />
+              Settings
+            </div>
+            {isSettingsOpen ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+
+          {isSettingsOpen && (
+            <div className="ml-8 mt-1 space-y-1">
+              {settingsSubMenu.map((item) => {
+                const isActive = location.pathname === item.href;
+
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-700 hover:bg-gray-100"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* User Profile */}

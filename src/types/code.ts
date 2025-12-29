@@ -1,3 +1,4 @@
+
 // src/types/code.ts
 
 export interface Code {
@@ -12,3 +13,18 @@ export interface CodeValue {
   description: string;
   codeId: number;
 }
+
+export interface CodeValueDto {
+  id: number;
+  codeId: number;
+  name: string;
+  description?: string;
+}
+
+export interface CodeValueRequest {
+  codeId: number;
+  name: string;
+  description?: string;
+}
+
+
